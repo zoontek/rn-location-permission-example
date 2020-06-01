@@ -2,53 +2,85 @@ import Geolocation from '@react-native-community/geolocation';
 import React from 'react';
 import {
   SafeAreaView,
-  ScrollView,
   StatusBar,
   Text,
   TouchableOpacity,
-  Alert,
+  View,
 } from 'react-native';
-import {check, request, PERMISSIONS, RESULTS} from 'react-native-permissions';
+import MapView, {Marker} from 'react-native-maps';
+import {check, PERMISSIONS, request, RESULTS} from 'react-native-permissions';
 
 Geolocation.setRNConfiguration({skipPermissionRequests: true});
 
 const App = () => {
-  const getCurrentPosition = title => {
-    Geolocation.getCurrentPosition(position => {
-      Alert.alert(title, JSON.stringify(position, null, 2));
-    });
-  };
+  const [permissionStatus, setPermissionStatus] = React.useState(null);
+
+  const [region, setRegion] = React.useState({
+    latitude: 37.78825,
+    latitudeDelta: 0.0922,
+    longitude: -122.4324,
+    longitudeDelta: 0.0421,
+  });
+
+  React.useEffect(() => {
+    if (permissionStatus === null) {
+      // initial check
+      check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE).then(setPermissionStatus);
+    }
+
+    if (permissionStatus === RESULTS.GRANTED) {
+      Geolocation.watchPosition(({coords}) =>
+        setRegion(prevRegion => ({
+          ...prevRegion,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        })),
+      );
+    }
+
+    return () => {
+      Geolocation.stopObserving();
+    };
+  }, [permissionStatus]);
 
   return (
     <>
       <StatusBar barStyle="dark-content" />
 
-      <SafeAreaView>
-        <ScrollView contentInsetAdjustmentBehavior="automatic">
+      <SafeAreaView style={{flex: 1, padding: 16}}>
+        <View style={{padding: 16, paddingBottom: 0}}>
+          <Text>
+            Permission status:{' '}
+            {permissionStatus != null && (
+              <Text style={{fontWeight: '700'}}>{permissionStatus}</Text>
+            )}
+          </Text>
+
           <TouchableOpacity
-            onPress={async () => {
-              const alwaysStatus = await request(
-                PERMISSIONS.IOS.LOCATION_ALWAYS,
+            style={{paddingVertical: 16}}
+            onPress={() => {
+              request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE).then(
+                setPermissionStatus,
               );
-
-              if (alwaysStatus === RESULTS.GRANTED) {
-                return getCurrentPosition('LOCATION_ALWAYS granted');
-              }
-
-              // always not granted, check for whenInUse
-              const whenInUseStatus = await check(
-                PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
-              );
-
-              if (whenInUseStatus === RESULTS.GRANTED) {
-                return getCurrentPosition('LOCATION_WHEN_IN_USE granted');
-              }
-
-              Alert.alert("Couldn't get location!", 'Permission not granted');
             }}>
-            <Text>Ask permission, then get location</Text>
+            <Text>👉 Ask permission</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
+
+        <MapView
+          style={{flex: 1}}
+          region={region}
+          // These does not works
+          // followsUserLocation={true}
+          // showUserLocation={true}
+        >
+          <Marker
+            coordinate={{
+              latitude: region.latitude,
+              longitude: region.longitude,
+            }}
+          />
+        </MapView>
       </SafeAreaView>
     </>
   );
