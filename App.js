@@ -70,10 +70,8 @@ const App = () => {
         <MapView
           style={{flex: 1}}
           region={region}
-          // These does not works
-          // followsUserLocation={true}
-          // showUserLocation={true}
-        >
+          showsUserLocation={true}
+          followsUserLocation={true}>
           <Marker
             coordinate={{
               latitude: region.latitude,
